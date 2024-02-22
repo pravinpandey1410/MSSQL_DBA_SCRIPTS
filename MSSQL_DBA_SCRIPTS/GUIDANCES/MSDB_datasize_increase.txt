@@ -1,0 +1,99 @@
+-- ######## Check for resource-cost queries running on the server ########
+
+SELECT
+      r.session_id
+    , db = DB_NAME(r.database_id)
+    , r.[status]
+    , p.[text]
+    --, sql_text = SUBSTRING(p.[text], (r.statement_start_offset / 2) + 1,
+    --        CASE WHEN r.statement_end_offset = -1
+    --            THEN 2147483647
+    --            ELSE ((r.statement_end_offset - r.statement_start_offset) / 2) + 1
+    --        END)
+    , r.cpu_time
+    , r.total_elapsed_time
+    , r.reads
+    , r.writes
+    , r.logical_reads
+FROM sys.dm_exec_requests r
+CROSS APPLY sys.dm_exec_sql_text(r.[sql_handle]) p
+WHERE r.[sql_handle] IS NOT NULL
+    AND r.session_id != @@SPID
+ORDER BY logical_reads DESC
+
+
+-- ######## This query returns the top list of objects and their size #######
+
+USE msdb
+GO
+
+SELECT TOP(10)
+      o.[object_id]
+    , obj = SCHEMA_NAME(o.[schema_id]) + '.' + o.name
+    , o.[type]
+    , i.total_rows
+    , i.total_size
+FROM sys.objects o
+JOIN (
+    SELECT
+          i.[object_id]
+        , total_size = CAST(SUM(a.total_pages) * 8. / 1024 AS DECIMAL(18,2))
+        , total_rows = SUM(CASE WHEN i.index_id IN (0, 1) AND a.[type] = 1 THEN p.[rows] END)
+    FROM sys.indexes i
+    JOIN sys.partitions p ON i.[object_id] = p.[object_id] AND i.index_id = p.index_id
+    JOIN sys.allocation_units a ON p.[partition_id] = a.container_id
+    WHERE i.is_disabled = 0
+        AND i.is_hypothetical = 0
+    GROUP BY i.[object_id]
+) i ON o.[object_id] = i.[object_id]
+WHERE o.[type] IN ('V', 'U', 'S') -- S(System tables), U(User tables), V(view)
+ORDER BY i.total_size DESC
+
+-- Check for the output which and check which objects are consuming space.
+
+1) If the object "sys.sysxmitqueue" is consuming a large amount of data follow the below steps:
+
+>  We cannot delete data directly from sys.sysxmitqueue, because this table is a system object (S). 
+      After some searching, I found a way how to get SQL Server to clear the table. 
+      When creating a new Service Broker, all the messages associated with the old broker will be deleted.
+
+> Syntax:
+     USE msdb
+     GO
+     ALTER DATABASE msdb SET NEW_BROKER WITH ROLLBACK IMMEDIATE
+
+> NOTE: But before executing the command, it is strongly recommended to disable SQL Server Agent and 
+     switch SQL Server to Single-User Mode. It took me approximately 10 minutes to delete the existing 
+     messages in all queues of Service Broker.
+
+
+2) Delete the records from the table "dbo.sysmail_attachments" if consuming a large amount of space.
+
+> SYNTAX:
+  DECLARE @DateBefore DATETIME 
+  SET @DateBefore = DATEADD(DAY, -7, GETDATE()) 
+  -- (Here -7 incdicates that only 7days data will be reserved and rest discarded, So just start with a buffer count of 500) 
+
+  EXEC msdb.dbo.sysmail_delete_mailitems_sp @sent_before = @DateBefore --, @sent_status = 'sent'
+
+3) The history of SQL Server Agent tasks is also stored in msdb. When there are too many entries in the log, 
+   they are hard to work with, so I try to clean it regularly with sp_purge_jobhistory:
+
+> SYNTAX:
+  DECLARE @DateBefore DATETIME 
+  SET @DateBefore = DATEADD(DAY, -7, GETDATE())
+  -- (Here -7 incdicates that only 7days data will be reserved and rest discarded, So just start with a buffer count of 500)
+
+  EXEC msdb.dbo.sp_purge_jobhistory @oldest_date = @DateBefore
+
+4) I should also mention about the information on backups that are logged in msdb. The old backup records can be deleted with sp_delete_backuphistory:
+
+> SYNTAX:
+  DECLARE @DateBefore DATETIME 
+  SET @DateBefore = DATEADD(DAY, -120, GETDATE())
+
+  EXEC msdb.dbo.sp_delete_backuphistory @oldest_date = @DateBefore
+
+
+
+

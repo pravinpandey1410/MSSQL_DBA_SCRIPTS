@@ -1,0 +1,98 @@
+How to troubleshoot if Tempdb Full.
+
+
+Firstly we have to check which file is full. Data File Full Or Log File Full and troubleshoot according that:-
+
+Tempdb Data File Full: 
+
+Firstly we have to check the space of all data files by using below command:-
+Use tempdb
+
+go
+
+sp_spaceused
+
+OR
+
+SELECT SUM(unallocated_extent_page_count) AS [free pages],
+
+(SUM(unallocated_extent_page_count)*1.0/128) AS [free space in MB]
+
+FROM sys.dm_db_file_space_usage;
+
+Then find out which transaction is occupying more space in Tempdb and troubleshoot by using below commands.
+Check active transactions:-
+
+select * from sys.sysprocesses where dbid = 2
+
+OR
+
+select * from sys.dm_exec_requests where session_id > 50
+
+OR
+
+Check open transactions through:-
+
+DBCC OPENTRAN
+
+If find any open transaction due to Tempdb getting full so  contact with the respective team and inform them about the transaction. Please don’t kill any transaction without the approval of application team.
+
+Try to shrink the Data File of Tempdb (if no OPEN transactions are in progress).
+Run below three commands after approval. Because there is a risk involved with this, it‘s mention below with commands.
+DBCC FREESYSTEMCACHE(‘ALL’)
+:-This command will clear all cached objects, including not only internal objects, but also             cached query plans.
+
+DBCC FREESYSTEMCACHE (‘tempdb’)
+:-This command will clears the cache for tempdb
+
+DBCC FREESYSTEMCACHE (‘Temporary Tables & Table Variables’)
+:-This command will clears all the temp table and variables
+
+Increase the Size of data file if it’s restricted or Enable auto growth in MB’s.
+If space is not available in the same drive then add one more NDF file to another drive where we have space. And when issue will resolve remove that NDF file. Because as per Microsoft recommendation our Tempdb data files should be as per number of Processor.
+The last Option is restart the instance after approval. And it will resets the Tempdb size to last stated value in sysdatabases.
+Tempdb Log File Full: 
+
+Firstly verify the current size of log file through:-
+DBCC sqlperf(logspace)
+
+Perform Shrink operation on the log file of tempdb for any free space.
+Verify if Log File is awaiting any operation through:-
+select name,log_reuse_wait_desc from sys.databases
+
+Then verify the LOG_REUSE_WAIT_DESC and check the Reason of the WAIT. Multiple states are possible and respective action should be taken based on the state. Solution
+
+Img1
+
+Find the transaction which is occupying maximum amount in Tempdb and kill that transaction after approval.
+Check active transactions:-
+
+select * from sys.sysprocesses where dbid = 2
+
+OR
+
+select * from sys.dm_exec_requests where session_id > 50
+
+OR
+
+Check open transactions through:-
+
+DBCC OPENTRAN
+
+Run below three commands after approval. Because there is a risk involved with this, it‘s mention below with commands.
+DBCC FREESYSTEMCACHE(‘ALL’)
+:-This command will clear all cached objects, including not only internal objects, but also             cached query plans.
+
+DBCC FREESYSTEMCACHE (‘tempdb’)
+:-This command will clears the cache for tempdb
+
+DBCC FREESYSTEMCACHE (‘Temporary Tables & Table Variables’)
+:-This command will clears all the temp table and variables.
+
+After free the cache then perform Shrink operation again.
+Strictly in SQL Server 2005 and lower versions we can run below mention command for truncate the log AFTER APROVAL.
+Add another log file in same drive or different drive as per space availability. When issue will resolve then remove that LDF file. Because as per Microsoft log file should not be more than one.
+backup log Tempdb to disk=N’d:\Tempdb.trn’ WITH TRUNCATE_ONLY
+
+Move the Tempdb files from one location to another, but it requires instance restart(Need Approval
+The last Option is restart the instance after Approval.

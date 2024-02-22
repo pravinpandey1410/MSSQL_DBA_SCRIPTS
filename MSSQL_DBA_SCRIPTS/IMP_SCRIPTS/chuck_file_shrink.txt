@@ -1,0 +1,24 @@
+SELECT
+a.FILEID AS file_id,
+    CONVERT(DECIMAL(12,2),ROUND(a.size/128.000,2)) AS [file_size_mb],
+    CONVERT(DECIMAL(12,2),ROUND(FILEPROPERTY(a.name,'SpaceUsed')/128.000,2)) AS [space_used_mb] ,
+    CONVERT(DECIMAL(12,2),ROUND((a.size-FILEPROPERTY(a.name,'SpaceUsed'))/128.000,2)) AS [free_space_mb],
+    a.NAME AS name,
+a.FILENAME AS physical_name
+FROM
+sys.sysfiles a
+
+
+
+declare @fsize int, @esize int, @fno int
+Set @esize = 271031.25--Provide the existing size of the file in MB 81920000 KB
+Set @fsize = 246430.00--Provide the final size of the file needed in MB
+Set @fno = 1 --Provide the file number that needs to be shrunk
+While (@fsize<= @esize)
+Begin
+
+Print 'DBCC SHRINKFILE ('+rtrim(cast(@fno as varchar(5)))+','+rtrim(cast(@esize as varchar(10)))+')'+Char(10)+'Go'
+Set @esize = @esize - 1024
+
+End
+

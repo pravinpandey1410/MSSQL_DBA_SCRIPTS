@@ -1,0 +1,58 @@
+USE [dbadmin]
+GO
+
+/****** Object:  StoredProcedure [dbo].[usp_DBStatus]    Script Date: 9/20/2022 3:38:48 PM ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+
+
+  
+CREATE procedure [dbo].[usp_DBStatus]  
+  
+as  
+  
+begin  
+  
+if(select count(*) from sys.databases where state_desc<>'Online')>0  
+Begin  
+
+DECLARE @vsubject AS NVARCHAR (255) 
+declare @servername1 nvarchar(40)  
+set @servername1 = (select local_net_address from sys.dm_exec_connections where session_id=@@SPID)   
+set @vsubject = 'Offline databases on ' + @servername1 + ' PRODUCTION SERVER ' + @@SERVERNAME  
+
+DECLARE @table NVARCHAR(MAX) ;  
+  
+SET @table =  
+N'<H1 style= color:red>Offline Databases Report</H1>' +  
+N'<table border="1">' +  
+N'<tr><th>Database Name</th><th>Database Status</th></tr>' +  
+CAST ( ( Select td=name, '',td=state_desc from sys.databases where state_desc<>'Online'  
+FOR XML PATH('tr'), TYPE  
+) AS NVARCHAR(MAX) ) +  
+N'</table>' ;  
+  
+
+                 
+
+
+EXEC [10.1.62.137,50243].msdb.dbo.sp_send_dbmail  
+@profile_name='DBAMON', --Change to your Profile Name  
+@recipients='Baiju.Jha@adityabirlacapital.com;cloversqlconnect@cloverinfotech.com', --Put the email address of those who want to receive the e-mail  
+@subject = @vsubject,  
+@body = @table,  
+@body_format = 'HTML' ;  
+  
+END  
+Else Print 'All Databases are Online'  
+  
+end  
+
+GO
+
+

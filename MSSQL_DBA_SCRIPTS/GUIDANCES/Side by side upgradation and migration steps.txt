@@ -1,0 +1,31 @@
+Side by side upgradation or Migration steps:
+
+Step 1:
+
+   Backup all the databases on the source server and restore all the databases on the target server which will build all the database entries in the target server master database along wth data initilization.
+
+step 2:Take the login script in source server and run in the target master database which will build all the corresponding logins on the target server.
+
+Step 3: take all the jobs script on the source server and run it on the target MSDB database will build all the job entries in the target MSDB database.
+
+   Note: To take jobs script, go to job node and press F7, which will provide list of jobs to generate job script.
+
+Step: 4: Moving linked server from source to target.
+   
+      Go to linked server node, and press F7 which will show us linked servers list in the object explorer, here we will generate linked servers script and we will run this script in the target master database which will build all the linked server entries in target master database.
+
+              But, building the linked server through script will not activate linked servers. We have to provide the linked account password once to activate linked servers.
+
+
+Step 5: Moving maintenance plans from source server to target server.
+
+        Moving maintenance plans is manual process. We have to build all the maintenance plans one by one manually as per the source server.
+
+
+
+Step 6: Create DB mail service on the target server if it is configured on the source server.
+ 
+        Note: We can move operators through script like jobs and linked servers from source to target.
+
+
+Step 7: If any of the high avaialabilities are present on the source server, then we have to configure each technology on respectice databases manually.

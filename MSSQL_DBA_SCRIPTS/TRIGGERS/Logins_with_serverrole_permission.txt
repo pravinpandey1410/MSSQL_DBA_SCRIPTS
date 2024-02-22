@@ -1,0 +1,60 @@
+
+
+SELECT  SERVERPROPERTY('SERVERNAME') AS [SERVERNAME],
+
+NAME AS [LOGINNAME],
+
+CASE SYSADMIN  WHEN '1' THEN 'YES' ELSE 'NO' END AS SYSADMIN,
+
+CASE SECURITYADMIN WHEN '1' THEN 'YES' ELSE 'NO' END AS SECURITYADMIN,
+
+CASE SETUPADMIN  WHEN '1' THEN 'YES' ELSE 'NO' END AS SETUPADMIN,
+
+CASE PROCESSADMIN  WHEN '1' THEN 'YES' ELSE 'NO' END AS PROCESSADMIN,
+
+CASE DISKADMIN  WHEN '1' THEN 'YES' ELSE 'NO' END AS DISKADMIN,
+
+CASE DBCREATOR  WHEN '1' THEN 'YES' ELSE 'NO' END AS DBCREATOR,
+
+CASE BULKADMIN  WHEN '1' THEN 'YES' ELSE 'NO' END AS BULKADMIN,
+
+DBNAME AS [DEFAULT_DBNAME]
+
+FROM MASTER..SYSLOGINS
+
+where LOGINNAME not like '##%' and  LOGINNAME not like 'NT%'
+
+
+
+
+
+
+
+declare @strsubject varchar(100)  
+ select @strsubject='Logins Details of 10.1.62.137 Sql Server ' + @@SERVERNAME  
+  
+ declare @tableHTML  nvarchar(max);  
+ set @tableHTML =  
+     N'<center> <H1 bgcolor="green">Logins on 10.1.62.137 Server  - ' + @@SERVERNAME + '</H1></center>' + 
+  N'<table border="1">' +   
+	 N'<tr bgcolor="#00ffff"><th>name</th><th>is_disabled</th><th>type_desc</th><th>create_date</th><th>modify_date</th>'+              
+
+     CAST ( (SELECT   td =  [NAME AS LOGINNAME], ''
+      , td =[CASE SYSADMIN  WHEN '1' THEN 'YES' ELSE 'NO' END AS SYSADMIN], ''
+      , td =[type_desc], ''
+      , td =[create_date], '       '
+      , td =[modify_date]
+FROM MASTER..SYSLOGINS
+where LOGINNAME not like '##%' and  LOGINNAME not like 'NT%'
+  FOR XML PATH('tr'), TYPE   
+  ) AS NVARCHAR(MAX) )  +  
+  N'</table>' ;  
+
+  
+EXEC [msdb].[dbo].[sp_send_dbmail]
+	@profile_name = 'DBAMON'
+	,@recipients = 'cloversqlconnect@cloverinfotech.com'
+	,@subject = @strsubject
+	,@body = @tableHTML
+	,@body_format = 'HTML'
+

@@ -1,0 +1,90 @@
+USE [master]
+GO
+
+/****** Object:  DdlTrigger [ddl_trig_CreateLogin]    Script Date: 6/24/2023 2:28:45 PM ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+
+/****** Object:  DdlTrigger [ddl_trig_CreateLogin]    Script Date: 3/2/2023 11:48:44 AM ******/
+
+
+
+/****** Object:  DdlTrigger [ddl_trig_CreateLogin]    Script Date: 2/27/2023 1:46:59 PM ******/
+CREATE     TRIGGER [ddl_trig_CreateLogin]
+
+on ALL SERVER
+AFTER CREATE_LOGIN, ALTER_LOGIN, DROP_LOGIN , ADD_ROLE_MEMBER, DROP_ROLE_MEMBER
+
+AS
+
+-- Declare variables
+
+DECLARE @mailSubject Nvarchar(100);
+
+DECLARE @mailBody Nvarchar(MAX);
+DECLARE @body1 NVARCHAR(MAX) 
+ DECLARE @data  xml;
+ SET @data = EVENTDATA()  
+
+---- Set the email data
+
+SET @mailSubject = 'SQL Login Creation and Modification On: ' + @@SERVERNAME;
+
+SET @mailBody = 
+
+'<tr> Hi Team, </tr> 
+</br>
+</br>
+
+SQL Login Creation and Modification On: ' + @@SERVERNAME + '
+
+</br></br>' +
+
+'By user: ' + ISNULL(@data.value('(/EVENT_INSTANCE/LoginName)[1]', 'nvarchar(max)'), 'Null Login' ) + '
+
+ </br></br>' + +
+
+'Commond Executed: ' +
+
+ ISNULL(@data.value('(/EVENT_INSTANCE/TSQLCommand)[1]', 'nvarchar(max)'), 'Null SQL ' )+ '
+
+ </br></br>' +
+
+'At: ' + CONVERT(nvarchar, getdate(), 120) +  '</br></br>'+
+
+
+'Please verify with user why this modification done'   +'
+
+ </br></br>
+
+  <tr> Regards, </tr></br>
+<tr> ABFL SQLSupport Team. </tr>'
+
+
+--Send the mail
+
+--print @data.value('(/EVENT_INSTANCE/TSQLCommand)[1]', 'nvarchar(max)'
+
+EXEC [10.1.62.137,50243].msdb.dbo.sp_send_dbmail  
+
+@recipients=N'baiju.jha@adityabirlacapital.com',
+
+@subject=@mailSubject,
+
+@body = @mailBody,
+
+@profile_name = DBAMON,
+
+@body_format = HTML;
+
+GO
+
+ENABLE TRIGGER [ddl_trig_CreateLogin] ON ALL SERVER
+GO
+
+

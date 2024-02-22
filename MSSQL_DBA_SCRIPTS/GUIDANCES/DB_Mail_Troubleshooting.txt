@@ -1,0 +1,64 @@
+Symptom 1:
+
+Mails will not be sent anymore. Sending test mail will not work.  When DB mail status is checked using the following SP, it will return “STARTED”.
+
+USE msdb
+GO
+EXEC dbo.sysmail_help_status_sp
+However, checking the status of mail items themselves using the following SP will show that they are “unsent”.
+
+SELECT TOP 10 sent_status, *
+FROM dbo.sysmail_allitems WITH(NOLOCK READUNCOMMITTED)
+ORDER BY send_request_date desc
+Stopping DB mail using the following SP does not work anymore. The command takes forever to execute and nothing happens.
+
+USE msdb
+GO
+EXEC dbo.sysmail_stop_sp
+If these are the symptoms,
+
+Kill the process “DatabaseMail.exe” from task manager of the server to stop DB mail.
+Check status using sysmail_help_status_sp and ensure it shows “STOPPED”.
+Start DB mail using the following command.
+USE msdb
+GO
+EXEC dbo.sysmail_start_sp
+Check status of mail items. The sent_status column should now show “sent”.
+Symptom 2:
+
+Fix for “Symptom 1” worked on one server, but on another, mails were not being sent at all. If the above fix doesn’t do it for you, Stop DB mail and check mail log in SSMS at
+
+Management->Database Mail->View Database Mail Log
+
+If log shows the message – “DatabaseMail process is shutting down. Mail queue has been stopped”, check for mails stuck in the mail queue.
+
+Use msdb
+GO
+Select count(*) from ExternalMailQueue – Check if this is non-zero
+If the above query returns a non-zero number, there are stuck mails. Use following script to remove all items from the queue. Please be informed that all these MAILS WILL BE LOST!
+Use msdb
+GO
+ALTER QUEUE ExternalMailQueue WITH STATUS = ON
+set nocount on
+declare @Conversation_handle uniqueidentifier;
+declare @message_type nvarchar(256);
+declare @counter bigint;
+declare @counter2 bigint;
+set @counter = (select count(*) from ExternalMailQueue)
+set @counter2=0
+while (@counter2&amp;amp;amp;lt;=@counter)
+begin
+receive @Conversation_handle = conversation_handle, @message_type = message_type_name from ExternalMailQueue
+set @counter2 = @counter2 + 1
+end
+2. Check number of mails in the mail queue. It will be zero.
+
+Use msdb
+GO
+Select count(*) from ExternalMailQueue
+3. Start DB mail using
+
+USE msdb
+GO
+EXEC dbo.sysmail_start_sp
+ 4. Check status of mail items. The sent_status column should now show “sent”.

@@ -1,0 +1,93 @@
+USE Adventure2016
+GO
+/****** Object:  StoredProcedure For Fragmentation Report by Yash  Script Date: 03/01/2023 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+ALTER procedure [dbo].[Frag_report]              
+as             
+
+
+DECLARE @tableHTML  NVARCHAR(MAX) 
+--DECLARE @tableHTML1  NVARCHAR(MAX) 
+DECLARE @vBody AS NVARCHAR (MAX)   
+create table #tmp
+(
+ [Schema Name] varchar(100),[Table Name] varchar(100),[Index Name] varchar(100),
+ [Fragmentation Percent] float
+)
+
+SELECT S.name as 'Schema Name',
+T.name as 'Table Name',
+I.name as 'Index Name',
+DDIPS.avg_fragmentation_in_percent as [Fragmentation Percent]
+--DDIPS.page_count 
+
+into #tmp1
+FROM sys.dm_db_index_physical_stats (DB_ID(), NULL, NULL, NULL, NULL) AS DDIPS
+INNER JOIN sys.tables T on T.object_id = DDIPS.object_id
+INNER JOIN sys.schemas S on T.schema_id = S.schema_id
+INNER JOIN sys.indexes I ON I.object_id = DDIPS.object_id
+AND DDIPS.index_id = I.index_id
+WHERE DDIPS.database_id = DB_ID()
+and I.name is not null
+AND DDIPS.avg_fragmentation_in_percent > 0
+ORDER BY DDIPS.avg_fragmentation_in_percent desc
+
+SET @tableHTML =   N'<center> <H1 bgcolor="green">Fragmentation Report</H1></center>' +                                
+
+ N'<table border="1">' +                
+
+   N'<tr bgcolor="#00ffff"><th>Schema</th><th>Table Name</th><th>Index Name</th><th>Fragmentation</th>'+              
+
+   CAST ((
+
+
+SELECT 'tr/@bgcolor'= CASE  WHEN CONVERT(DECIMAL(5, 2), [Fragmentation Percent]) > 30
+THEN '#f55b47' --red  
+WHEN CONVERT(DECIMAL(5, 2), [Fragmentation Percent]) < 30 AND CONVERT(DECIMAL(5, 2), [Fragmentation Percent]) > 10
+THEN '#f5e35b' --yellow 
+ELSE '#5cf77d' END, --green
+
+/*
+
+SELECT 'tr/@bgcolor'= CASE  WHEN CONVERT(DECIMAL(5, 2), [Fragmentation Percent]) > 30
+THEN '#fc604e' --red  
+WHEN CONVERT(DECIMAL(5, 2), [Fragmentation Percent]) < 30 AND CONVERT(DECIMAL(5, 2), [Fragmentation Percent]) > 10
+THEN '#ffac69' --yellow 
+ELSE '#fce792' END, --green
+*/
+
+
+td=[Schema Name],'',  
+td=[Table Name],'',
+td=[Index Name],'',
+td=CONVERT(DECIMAL(5, 2), [Fragmentation Percent]),''
+from #tmp1
+
+ FOR XML PATH('tr'), TYPE )AS NVARCHAR(MAX))+N'</table>'      
+
+  Set @vBody=@tableHTML
+
+     EXEC msdb.dbo.sp_send_dbmail               
+
+     @recipients='yash.chogle@cloverinfotech.com',
+
+     @profile_name = 'Home',                  
+
+     @subject = 'Fragmentation Report ',              
+
+
+
+     @body =@vBody,
+
+
+
+     @body_format = 'HTML';               
+
+
+
+ DROP TABLE #tmp1      

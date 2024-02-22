@@ -1,0 +1,198 @@
+USE [msdb]
+GO
+
+/****** Object:  Trigger [dbo].[jobfailurenotify]    Script Date: 8/31/2023 11:58:52 PM ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+
+
+
+
+
+CREATE TRIGGER [dbo].[jobfailurenotify]
+ON [dbo].[sysjobhistory]
+FOR INSERT AS                                                                                          
+                                                      
+BEGIN                                                    
+                                                  
+                                                        
+ Declare @HTMLBODY1 nvarchar(max)                                                            
+ Declare @HTMLBODY2 nvarchar(max)                                                        
+                                                     
+ DECLARE @failed TINYINT,@subject VARCHAR(500),@body VARCHAR(8000),@Joboutcome VARCHAR(500),                                                    
+ @step_id varchar(100),@stepName Varchar(500),@message Varchar(8000),@STATUS varchar(100),@SERVERName varchar(100)                                                    
+                                                    
+                                                    
+ Select @Joboutcome = step_name from inserted where step_name ='(Job outcome)'                                                    
+                                                    
+ if (@Joboutcome is null)                                                                                        
+ BEGIN                                                      
+                                                                                        
+ SELECT @failed = COUNT(*) from inserted                                                                                          
+ where run_status=0                                                                                          
+                                                                                          
+ IF (@failed > 0 )                                                                                          
+ BEGIN                                                                                              
+   SELECT @subject=name from msdb.dbo.sysjobs                                                                                          
+    where job_id in (select distinct(job_id) from inserted where run_status=0) 
+	  DECLARE @vSubject AS NVARCHAR (255) 
+declare @servername1 nvarchar(40)
+	set @servername1 = (select local_net_address from sys.dm_exec_connections where session_id=@@SPID)                 
+
+set @vSubject = 'Job '+@subject + 'failed on ' + @servername1 + ' PRODUCTION SERVER ' + @@SERVERNAME       
+  -- declare @subject1 varchar (500)
+    --set @subject1= 'Job ['+@subject + '] has been failed on 132.149.99.141 server'                   
+                               
+    select @step_id=Step_id,@stepName=Step_name,@message=Message from inserted where run_status=0                                                                                          
+                                                    
+   SET @STATUS = 'Status : The step failed on ' + CONVERT(VARCHAR(25),GETDATE())                                                    
+   SET @SERVERName= CONVERT(VARCHAR(25),SERVERPROPERTY('SERVERNAME'))                                                                                            
+   SET @StepName =@stepName                                                      
+                                                                                      
+                                                                  
+   set @HTMLBODY1 = '<table class=''MyTable'' cellpadding=''0'' cellspacing=''0'' width=''800px''>'+                                                    
+                                          '<caption> DBA JOB Failure Report </caption>'+                                                    
+                                          '<tr><td width = 10px><center> JOB NAME</center></td><td>&nbsp;' + @subject + '</td>'+'</tr>'+                                                    
+                                          '<td width = 10px><center> SERVER NAME </center></td><td>&nbsp;'+ @SERVERName +'</td>'+                                                    
+                    '</tr>'+                                                    
+                                          '<tr><td width = 10px><center> STATUS </center></td><td>&nbsp;'+ @STATUS +'</td>'+'</tr>'+                                                    
+               '<td width = 10px><center> STEP ID </center></td><td>&nbsp;'+ @step_id +'</td>'+                                          
+                                          '</tr>'+                                                    
+          '<tr><td width = 10px><center> STEP NAME </center></td><td>&nbsp;'+ @stepName +'</td>'+'</tr>'+                                                
+                                          '<tr><td width = 10px><center> ERROR</center> </td><td>&nbsp;'+ @message +'</td>'+'</tr>'+                                                    
+         '</table>'                                                            
+                                                      
+                                    
+                                                    
+            If(@HTMLBODY1 IS NOT NULL And @HTMLBODY1<>'')                                                    
+            Begin                          
+                                                                
+                  Set @HTMLBODY2 = '<HTML><HEAD><STYLE TYPE=''text/css''>' +                                                    
+                              '.MyTable{width: 850px; border-right: black 1px solid; border-left: black 1px solid; border-bottom: black 1px solid; border-top: black 1px solid; }' +                                                    
+                              '.MyTable td{width: auto; border-right: black 1px solid; border-top: black 1px solid; font-size: 0.8em; vertical-align: middle; border-left: black 1px solid; color: black; border-bottom: black 1px solid; font-family: Verdana
+
+
+
+
+
+
+
+
+
+
+  
+  
+      
+        
+        
+            
+              
+                
+                  
+                    
+                    
+;                        
+                          
+                            
+                              
+                                
+                                  
+                                    
+                                      
+                                        
+                                          
+                                            
+                                              
+                                                
+                                                  
+ background-color: White; text-align: left; height: 18px;}' +                                                    
+                              '.MyTable caption{font-size: 0.9em; color: White; font-style: normal; font-family: Verdana; background-color: #3c6b97; border-right: black 1px solid; border-top: black 1px solid; border-left: black 1px solid;}' +            
+
+
+
+
+
+
+
+
+
+
+  
+    
+      
+        
+          
+            
+              
+                
+                  
+                    
+                      
+                        
+                          
+                            
+                              
+                                
+                                  
+                                    
+                                      
+                                      
+                              '.MyTable th{background-color: #95B3D7;border-style : solid;border-color : Black; border-width:1px;}' +                                                    
+                              '</STYLE></HEAD><Body><br>' +                                                    
+                              'Dear Team,<BR><BR> &nbsp&nbsp Kindly Check This Job.'+                                                  
+                     '<BR><BR>'+ 
+                     '<center><Div><center>' + @HTMLBODY1 +                                                    
+                              '</center></Div></center> '+                                                    
+                              '<BR><BR> This is a system-generated e-mail, please do not reply to this email.' +                                      
+                              '<BR><BR>Thanks and Regards,<BR> MSSQL DBA <BR></Body></HTML>'                                                    
+            End                                          
+                                
+           select @HTMLBODY2                                                                            
+                                                    
+            If(@HTMLBODY2 IS NOT NULL And @HTMLBODY2<>'')                                                    
+            Begin                                      
+set @servername1 = (select local_net_address from sys.dm_exec_connections where session_id=@@SPID)                 
+
+set @vSubject = 'Job failed on ' + @servername1 + ' PRODUCTION SERVER ' + @@SERVERNAME     
+                        EXEC [10.1.62.137,50243].msdb.dbo.sp_send_dbmail                                                                  
+                        @profile_name = 'DBAMON',                        
+						@recipients='cloversqlconnect@cloverinfotech.com',  
+                                                                                 
+                       @subject = @vSubject,                                                    
+                        @body = @HTMLBODY2,                  
+                        @body_format = 'HTML'                                                    
+                                                                  
+            End                                              
+       End                                                    
+    END                                                    
+END
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+GO
+
+ALTER TABLE [dbo].[sysjobhistory] ENABLE TRIGGER [jobfailurenotify]
+GO
+
+

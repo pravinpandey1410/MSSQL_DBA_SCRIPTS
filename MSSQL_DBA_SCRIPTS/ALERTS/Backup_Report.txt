@@ -1,0 +1,113 @@
+USE [master]
+GO
+
+/****** Object:  StoredProcedure [dbo].[BackupReport_HTML_live]    Script Date: 19-10-2023 10:32:13 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+
+CREATE PROCEDURE [dbo].[BackupReport_HTML_live] (
+  @to nvarchar(128) = null,
+--, @LogThresholdInHours int = 15
+--, @DiffThresholdInHours int = 48
+ @FullThresholdInHours int = 48
+)
+as
+set nocount on;
+begin
+ declare @DB_Count nvarchar(200)
+ Set @DB_Count=(select count(1)  from sys.databases)
+    declare @tableHTML nvarchar(MAX);
+    declare @footerHTML nvarchar(MAX);
+    declare @subject nvarchar(200);
+    declare @red char(7) = '#E95050';
+    declare @green char(7) = '#9BDC7B';
+    set @footerHTML = '<footer><p style="font-size:10pt; font-family:calibri;color:#999C96">Report sent from '+@@SERVERNAME+' created on '+CONVERT(varchar, GETDATE(),120)+'</p></footer>';
+    with [backups] as
+    (
+    select
+   ROW_NUMBER() OVER(ORDER BY database_name ASC) AS Sr_No,
+      [database_name]
+    ,   case [type]
+           when 'D' then 'Full Backup'
+   --when 'I' then 'Differential Backup'
+   --when 'L' then 'Log Backup'
+   --when 'F' then 'File or Filegroup Backup'
+   --when 'G' then 'Differential File Backup'
+   --when 'P' then 'Partial Backup'
+   --when 'Q' then 'Differential Partial Backup'
+        end as "backup_type"
+    ,  [backup_finish_date] 
+    ,    RANK() over (partition by [database_name], [type] order by [backup_finish_date] desc) as 'rownum',
+ bf.physical_device_name
+    from
+         msdb.dbo.[backupset] left join msdb..backupmediafamily bf on [backupset].media_set_id = bf.[media_set_id]
+    where
+         [server_name] = @@SERVERNAME and type='D' and  physical_device_name  like '%:\%' 
+    )
+    select ROW_NUMBER() OVER(ORDER BY name ASC) AS Sr_No,
+        d.[name]
+    ,   d.[recovery_model_desc]
+    ,   b.[backup_type]
+    ,   b.[backup_finish_date]
+ , b.physical_device_name
+    into #backups
+    from
+        sys.databases d
+    left join
+        [backups] b
+        on(b.[database_name] = d.[name] and b.[rownum] = 1)
+    where
+         d.[name] not in ('tempdb') and b.backup_finish_date> DATEADD(hour, @FullThresholdInHours * -1, GETDATE());
+    if(@to is not null)
+    begin
+        set @tableHTML =
+        N'<H4 style="font-family:calibri;font-size:15pt">Kindly check below table for Backup Report of 10.9.1.98 server</H4>' +
+  N'<H4 style="font-family:calibri;font-size:15pt">Total No of Databases :'+@DB_Count+'</H4>'+
+        N'<table border="1" style="font-size:11pt; font-family;calibri">' +
+  N'<tr><th align="left">Sr_No.</th>' +
+        N'<th align="left">Database Name</th>' +
+        N'<th align="left">Recovery Model</th>' +
+        N'<th align="left">Backup Type</th>' +
+        N'<th align="left">Backup Date</th>' +
+  N'<th align="left">Backup Location</tr>'+
+        CAST((select
+                  case
+                      when [backup_type] is null then @red 
+                     -- when [backup_type] = 'Log Backup' and [backup_finish_date] < DATEADD(hour, @LogThresholdInHours * -1, GETDATE()) then @red
+                     -- when [backup_type] = 'Differential Backup' and [backup_finish_date] < DATEADD(hour, @DiffThresholdInHours * -1, GETDATE()) then @red
+                      when [backup_type] = 'Full Backup' and [backup_finish_date] < DATEADD(hour, @FullThresholdInHours * -1, GETDATE()) then @red
+                      else @green
+                  end as [@bgcolor],
+      td = [Sr_No],'',
+                  td = [name], '',
+                  td = [recovery_model_desc], '',
+                  td = COALESCE([backup_type],'No backup taken. Action Required.'), '',
+                  td = COALESCE([backup_finish_date],''), '',
+      td = [physical_device_name], ''
+              from
+                  #backups
+              for xml path('tr'), type
+              ) as nvarchar(MAX)
+        ) + N'</table>';
+        set @tableHTML = @tableHTML + @footerHTML
+          EXEC msdb.dbo.sp_send_dbmail
+    @profile_name = 'Clover_DBA',
+    @recipients = 'cloversqlconnect@cloverinfotech.com;vishal.rajdev@polycab.com;bindesh.chaurasiya@polycab.com',
+    @subject = 'Daily Backup Report : 10.9.1.98',
+    @body = @tableHTML,
+    @body_format = 'HTML'
+    end
+    else
+         select * from #backups
+    end
+
+GO
+
+
+
+

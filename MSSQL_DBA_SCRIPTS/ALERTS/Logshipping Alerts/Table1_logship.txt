@@ -1,0 +1,21 @@
+USE [DBA]
+GO
+
+/****** Object:  Table [dbo].[Logship_171]    Script Date: 11/22/2022 5:06:52 PM ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[Logship_171](
+	[DBNAME] [nvarchar](128) NOT NULL,
+	[PRIMARY SERVER] [sysname] NOT NULL,
+	[SECONDARY SERVER] [nvarchar](128) NOT NULL,
+	[LAST RESTORE DATE] [datetime] NULL,
+	[LATENCY] [int] NULL,
+	[LOGSHIPPING STATUS] [varchar](14) NOT NULL
+) ON [PRIMARY]
+GO
+
+

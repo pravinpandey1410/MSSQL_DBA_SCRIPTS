@@ -1,0 +1,74 @@
+-- Low Disk space alert
+
+
+
+
+
+
+
+USE [dbadmin]
+GO
+/****** Object:  StoredProcedure [dbo].[DiskSpaceAlert]    Script Date: 9/2/2022 11:07:00 AM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+Create Procedure [dbo].[DiskSpaceAlert]
+
+As
+Begin
+declare @cnt int 
+
+create table #DriveSpaceLeft (Drive varchar(10), [total_space] bigint,
+                              [MB_Free] bigint, [percentage_free] decimal(12,2))
+insert #DriveSpaceLeft (Drive, [total_space],[MB_Free],[percentage_free])
+     SELECT DISTINCT 
+	--S.TOTAL_BYTES,s.available_bytes,s.logical_volume_name,*,
+			s.volume_mount_point [Drive],
+			CAST(s.TOTAL_BYTES / 1048576 as decimal(12,2)) [Total Space MBs],
+			CAST(s.available_bytes / 1048576 as decimal(12,2)) [AvailableMBs],
+			(CAST(s.available_bytes / 1048576 as decimal(12,2)) / 
+			CAST(s.TOTAL_BYTES / 1048576 as decimal(12,2)) * 100) [Percentage]
+		FROM 
+			sys.master_files f
+			CROSS APPLY sys.dm_os_volume_stats(f.database_id, f.[file_id]) s;
+	 SELECT @cnt=COUNT(*) FROM #DriveSpaceLeft  WHERE percentage_free < 10
+ 
+if (@cnt > 0)
+begin
+   	declare @strsubject varchar(100)
+	select @strsubject='Check drive space on 10.1.62.78 ' + @@SERVERNAME
+
+	declare @tableHTML  nvarchar(max);
+	set @tableHTML =
+	    N'<H1>Drives with less than 10% Free  - ' + @@SERVERNAME + '</H1>' +
+		N'<table border="1">' +
+		N'<tr><th>Drive</th>' +
+		N'<th>Total space</th>'+
+        N'<th>MB Free</th>'+
+	    N'<th>Percentage (%) Free</th></tr>' +
+	    CAST ( ( SELECT td = [Drive], '',
+                		td = [total_space], '',
+						td = [MB_Free], '      ',
+						td = [percentage_free]
+						FROM #DriveSpaceLeft WHERE percentage_free < 10
+				  FOR XML PATH('tr'), TYPE 
+		) AS NVARCHAR(MAX) ) +
+		N'</table>' ;
+
+	EXEC [10.1.62.137,50243].msdb.dbo.sp_send_dbmail
+	@recipients='cloversqlconnect@cloverinfotech.com;baiju.jha@adityabirlacapital.com',
+	@subject = @strsubject,
+	@body = @tableHTML,
+	@body_format = 'HTML' ,
+	@profile_name='DBAMON'
+	
+end
+DROP TABLE #DriveSpaceLeft
+
+
+End
+
+

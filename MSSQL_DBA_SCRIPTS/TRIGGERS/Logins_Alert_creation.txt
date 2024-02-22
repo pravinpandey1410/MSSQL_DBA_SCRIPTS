@@ -1,0 +1,48 @@
+declare @strsubject varchar(100)  
+ select @strsubject='Logins Details of 10.1.62.137 Sql Server ' + @@SERVERNAME  
+  
+ declare @tableHTML  nvarchar(max);  
+ set @tableHTML =  
+     N'<H1>Logins on 10.1.62.137 Server  - ' + @@SERVERNAME + '</H1>' +  
+  N'<table border="1">' +  
+  N'<tr><th>name</th>' +  
+   N'<th>is_disabled</th>'+
+  N'<th>type_desc</th>'+  
+        N'<th>create_date</th>'+  
+     N'<th>modify_date</th></tr>' +  
+     CAST ( (SELECT  td =  [name], ''
+      , td =[is_disabled], ''
+      , td =[type_desc], ''
+      , td =[create_date], '       '
+      , td =[modify_date]
+ from sys.server_principals
+ where type not in ('G', 'R') and name not like '##MS%' and name not like 'NT%'
+  FOR XML PATH('tr'), TYPE   
+  ) AS NVARCHAR(MAX) )  +  
+  N'</table>' ;  
+
+  
+EXEC [msdb].[dbo].[sp_send_dbmail]
+	@profile_name = 'DBAMON'
+	,@recipients = 'cloversqlconnect@cloverinfotech.com'
+	,@subject = @strsubject
+	,@body = @tableHTML
+	,@body_format = 'HTML'
+
+
+
+--select sp.name as login,
+--       sp.type_desc as login_type,
+--       sl.password_hash,
+--       sp.create_date,
+--       sp.modify_date,
+--       case when sp.is_disabled = 1 then 'Disabled'
+--            else 'Enabled' end as status
+--from sys.server_principals sp
+--left join sys.sql_logins sl
+--          on sp.principal_id = sl.principal_id
+--where sp.type not in ('G', 'R')
+--order by sp.name;
+
+--Select name,is_disabled,type_desc,create_date,modify_date from sys.server_principals
+--where type not in ('G', 'R') and name not like '##MS%' and name not like 'NT

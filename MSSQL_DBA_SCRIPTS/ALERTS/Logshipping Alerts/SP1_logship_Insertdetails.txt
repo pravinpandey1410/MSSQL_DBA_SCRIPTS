@@ -1,0 +1,55 @@
+USE [DBA]
+GO
+/****** Object:  StoredProcedure [dbo].[Logshipmonitor_10.9.45.171]    Script Date: 11/22/2022 5:00:29 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+
+ALTER procedure [dbo].[Logshipmonitor_10.9.45.171]
+as
+begin
+
+--IF EXISTS(SELECT * FROM   dbo.Logship_32)
+
+  drop TABLE dbo.Logship_171
+
+--IF EXISTS(SELECT * FROM   dbo.Logship_33)
+
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+select b.secondary_database as DBNAME,a.primary_server as [PRIMARY SERVER], b.secondary_server as [SECONDARY SERVER],
+
+b.last_restored_date as [LAST RESTORE DATE],
+
+DATEDIFF(minute, b.last_restored_date, GETDATE()) AS LATENCY,
+
+case 
+
+when  
+
+DATEDIFF(minute, last_restored_date, GETDATE()) < 45
+
+then 'SYNCHRONIZED' 
+
+else 'UNSYNCHRONIZED' 
+
+end  
+
+as [LOGSHIPPING STATUS] 
+
+into Logship_171
+
+from [10.9.45.171,50116].msdb.dbo.log_shipping_monitor_secondary b,msdb.dbo.log_shipping_monitor_primary a
+
+where a.primary_database=b.primary_database collate SQL_Latin1_General_CP1_CI_AS
+
+end
+
+
+
+-- MAKE CHANGES in line Linked server name and table name
+

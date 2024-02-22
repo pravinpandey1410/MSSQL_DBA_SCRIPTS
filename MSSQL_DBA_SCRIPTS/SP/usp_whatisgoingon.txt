@@ -1,0 +1,100 @@
+USE [master]
+GO
+
+/****** Object:  View [dbo].[WhatIsGoingOn]    Script Date: 2/22/2024 12:48:43 PM ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+
+CREATE VIEW [dbo].[WhatIsGoingOn]
+AS
+SELECT
+OBJECT_NAME(objectid) as ObjectName
+,SUBSTRING(stateText.text, (statement_start_offset/2)+1,
+((CASE statement_end_offset
+WHEN -1 THEN DATALENGTH(stateText.text)
+ELSE statement_end_offset
+END - statement_start_offset)/2) + 1) AS statement_text,
+Coalesce(Quotename(Db_name(stateText.dbid)) + N'.' + Quotename(Object_schema_name(stateText.objectid,stateText.dbid)) + N'.' + Quotename(Object_name(stateText.objectid,stateText.dbid)), 
+                          '') AS command_text,   
+sysd.name as DatabaseName
+,req.cpu_time AS CPU_Time
+,sysp.physical_io
+,sysp.lastwaittype
+,DATEDIFF(minute, last_request_start_time, getdate()) AS RunningMinutes
+,req.Percent_Complete
+,sysp.cmd
+,sess.HOST_NAME as RunningFrom
+,LEFT(CLIENT_INTERFACE_NAME, 25) AS RunningBy
+,sess.session_id AS SessionID
+,req.blocking_session_id AS BlockingWith
+,req.reads
+,req.writes
+,sess.[program_name]
+,sess.login_name
+,sess.status
+,sess.last_request_start_time
+,sysp.login_time
+,sysp.last_batch
+,req.logical_reads
+
+FROM
+sys.dm_exec_requests req
+INNER JOIN sys.databases sysd ON sysd.database_id=req.database_id
+INNER JOIN sys.dm_exec_sessions sess ON sess.session_id = req.session_id
+AND sess.is_user_process = 1
+INNER JOIN sys.sysprocesses sysp ON sysp.spid=sess.session_id
+CROSS APPLY
+sys.dm_exec_sql_text(sysp.sql_handle) AS stateText
+
+
+
+
+GO
+
+
+USE [master]
+GO
+
+/****** Object:  StoredProcedure [dbo].[usp_whatisgoingon]    Script Date: 2/22/2024 12:49:39 PM ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+  
+  
+  
+--============================================================================================================  
+  
+--create procedure in master database   
+  
+    
+CREATE procedure [dbo].[usp_whatisgoingon]    
+as    
+select a.SessionID,BlockingWith,RunningMinutes as RunningMinute ,Percent_Complete ,DatabaseName,  
+statement_text,command_text,program_name,RunningFrom,CPU_Time,lastwaittype, * from     
+master.dbo.WhatIsGoingOn a order  by RunningMinutes desc,a.SessionID desc  
+  
+  
+  
+--===============================================================================================   
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+GO
+
+

@@ -1,0 +1,44 @@
+master..usp_whatisgoingon
+go
+select name,state_desc from sys.databases where state_desc<>'online'
+go
+select name,state_desc,create_date from sys.databases where name='tempdb'
+go
+select servicename,startup_type_desc,status_desc,last_startup_time from sys.dm_server_services
+go
+
+master..diskspace
+go
+
+master..usp_backups
+go
+
+master..log_space
+go
+
+select log_reuse_wait_desc, *from sys.databases where name ='HRMS40'
+
+use SVPDB
+--checkpoint
+dbcc shrinkfile(2)
+
+EXEC master.dbo.xp_readerrorlog 0, 1, N'backed', N'', '20240219', '20240221', N'desc'
+EXEC master.dbo.xp_readerrorlog 0, 1, N'BACKUP failed', N'', '20240219', '20240221', N'desc'
+EXEC master.dbo.xp_readerrorlog 0, 1, N'deadlock', N'', '20240219', '20240221', N'desc'
+EXEC master.dbo.xp_readerrorlog 0, 1, N'error', N'', '20240219', '20240221', N'desc'
+EXEC master.dbo.xp_readerrorlog 0, 1, N'I/O', N'', '20240219', '20240221', N'desc'
+EXEC master.dbo.xp_readerrorlog 0, 1, N'login failed', N'', '20240219', '20240221', N'desc'
+EXEC master.dbo.xp_readerrorlog 0, 1, N'Always on', N'', '20240219', '20240221', N'desc'
+
+--to check failed jobs--change date
+select distinct b.name,a.run_date from msdb..sysjobhistory a ,msdb..sysjobs b where
+a.job_id=b.job_id and run_status=0 and a.run_date>=20240216
+
+----check backuptime
+select database_name,backup_start_date,type from msdb..backupset
+where backup_start_date>=dateadd(dd,-1,getdate()) and type<>'L'
+order by database_name asc
+
+
+
+select * from sys.databases where database_id between 5 and 20

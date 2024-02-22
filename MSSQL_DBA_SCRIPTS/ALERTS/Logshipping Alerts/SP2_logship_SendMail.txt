@@ -1,0 +1,168 @@
+USE [DBA]
+GO
+/****** Object:  StoredProcedure [dbo].[Logship_Monitor_10.9.45.171]    Script Date: 11/22/2022 5:01:50 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+
+
+
+ALTER procedure [dbo].[Logship_Monitor_10.9.45.171]              
+
+as             
+
+DECLARE @tableHTML  NVARCHAR(MAX) 
+
+--DECLARE @tableHTML1  NVARCHAR(MAX) 
+
+DECLARE @vBody AS NVARCHAR (MAX)   
+
+create table #tmp
+
+(
+
+DBname varchar(100),[Primary Server] varchar(100),[Secondary Server] varchar(100),[Last restore date] datetime,Latency int,[Logshipping Status] varchar(100)
+
+)
+
+insert into #tmp
+
+--exec logshipmonitor
+SELECT [DBNAME]
+
+	,[PRIMARY SERVER]
+
+      ,[SECONDARY SERVER]
+
+
+
+      ,[LAST RESTORE DATE]
+
+
+
+      ,[LATENCY]
+
+
+
+      ,[LOGSHIPPING STATUS]
+
+
+
+  FROM [DBA].[dbo].[Logship_171]
+
+--insert into #tmp
+
+--exec logshipmonitor
+
+
+
+--SELECT [DBNAME]
+
+--	,[PRIMARY SERVER]
+
+
+
+--      ,[SECONDARY SERVER]
+
+
+
+--      ,[LAST RESTORE DATE]
+
+
+
+--      ,[LATENCY]
+
+
+
+--      ,[LOGSHIPPING STATUS]
+
+
+
+--  FROM [DBA].[dbo].[Logship_81]
+
+SET @tableHTML =                  
+
+N'<center> <H1 bgcolor="green">Logship Monitoring</H1></center>' +                                
+
+ N'<table border="1">' +                
+
+   N'<tr bgcolor="#00ffff"><th>DBname</th><th>Primary Server</th><th>Secondary Server</th><th>Last restore date</th><th>Latency</th><th>Logshipping Status</th>'+              
+
+   CAST ((
+
+SELECT 'tr/@bgcolor'= CASE  WHEN Latency < 45
+THEN '#90EE90' 
+ELSE '#FF4500' END, 
+
+
+td=DBname,'',  
+
+td=[Primary Server],'',
+
+td=[Secondary Server],'',
+
+td=[Last restore date],'',
+
+td=Latency,'',
+
+td=[Logshipping Status],''
+
+ from #tmp
+
+ FOR XML PATH('tr'), TYPE )AS NVARCHAR(MAX))+N'</table>'      
+
+  Set @vBody=@tableHTML
+
+
+
+     -- Change SQL Server Email notification code here              
+
+
+
+     EXEC msdb.dbo.sp_send_dbmail               
+
+
+
+     @recipients='cloversqlconnect@cloverinfotech.com',
+
+
+
+                  
+
+
+
+     @profile_name = 'mail notification',                  
+
+
+
+     @subject = 'Logshipping Report 10.9.45.171',              
+
+
+
+     @body =@vBody,
+
+
+
+     @body_format = 'HTML';               
+
+
+
+ DROP TABLE #tmp      
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+

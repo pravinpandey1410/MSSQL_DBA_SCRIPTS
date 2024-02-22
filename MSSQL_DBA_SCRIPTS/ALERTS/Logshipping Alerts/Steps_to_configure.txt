@@ -1,0 +1,7 @@
+
+
+Steps to configure 
+
+1) Create the respective link servers
+2) Create the table in primary
+3) Create the both SP add then add it into the job as step1 and step2
