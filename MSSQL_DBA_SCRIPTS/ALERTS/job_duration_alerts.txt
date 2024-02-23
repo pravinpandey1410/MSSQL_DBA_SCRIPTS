@@ -1,0 +1,76 @@
+USE [msdb]
+GO
+
+/****** Object:  StoredProcedure [dbo].[Job_Outcome_Details]    Script Date: 10/18/2023 8:48:05 AM ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+CREATE procedure [dbo].[Job_Outcome_Details] as
+DECLARE @tableHTML  NVARCHAR(MAX) 
+DECLARE @vBody AS NVARCHAR (MAX)
+DECLARE @job_id binary(16)
+SELECT @job_id = job_id FROM msdb.dbo.sysjobs WHERE (name = N'DataMergeStaging')
+
+create table #temp123 (Job_Name nvarchar(max), RunDate datetime,Start_Time datetime, End_Time datetime, 
+Duration varchar(max), Run_Outcome nvarchar(max))
+ insert into #temp123 
+SELECT TOP 1
+B.name,
+CONVERT(DATETIME, RTRIM(run_date))
++ ((run_time / 10000 * 3600) 
++ ((run_time % 10000) / 100 * 60) 
++ (run_time % 10000) % 100) / (86399.9964) AS run_datetime,
+dbo.agent_datetime(run_date, run_time) Start_Time,
+CONVERT(datetime, dbo.agent_datetime(run_date, run_time)) +
+CONVERT(datetime, STUFF(STUFF(RIGHT('000000' + CAST ( run_duration AS VARCHAR(6 ) ) ,6),5,0,':'),3,0,':') ) AS End_Time,
+STUFF(STUFF(RIGHT('000000' + CAST ( run_duration AS VARCHAR(6 ) ) ,6),5,0,':'),3,0,':') Duration,
+CASE sjh.run_status
+WHEN 0 THEN 'Failed'
+WHEN 1 THEN 'Succeeded'
+WHEN 2 THEN 'Retry'
+WHEN 3 THEN 'Canceled'
+ELSE 'Running' END as RunStatus
+FROM msdb..sysjobhistory sjh INNER JOIN  msdb.dbo.sysjobs as B ON sjh.job_id = B.job_id
+WHERE
+sjh.step_id = 1 AND
+ --sjh.run_status = 1 AND
+sjh.job_id = @job_id
+ORDER BY
+run_datetime DESC
+
+
+
+set @tableHTML = 
+N'<center> <H1 bgcolor="green">DataMergeStaging Job Report</H1></center>' +                                
+ N'<table border="1">' +                
+N'<tr bgcolor="#faa80f"><th>Job Name</th><th>Start Time</th><th>End Time</th><th>Duration</th><th>Job Outcome</th>'+              
+CAST ((
+SELECT 'tr/@bgcolor'= CASE  WHEN  [Run_Outcome] = 'Succeeded'
+THEN '#b5aea1' --grey  
+ELSE '#f55b47' END, --red
+	   td=[Job_Name],'',  
+	   td=Start_Time,'',
+	   td=End_Time,'',
+	   td=Duration,'',
+	   td=Run_Outcome,''
+from #temp123
+FOR XML PATH('tr'), TYPE )AS NVARCHAR(MAX))+N'</table>'  
+set @vBody = @tableHTML
+
+EXEC msdb.dbo.sp_send_dbmail               
+@recipients='cloversqlconnect@cloverinfotech.com;Supriya.Deshpande@pidilite.com;
+datacenter@pidilite.com;prasanna.mahajan@heerasoftware.com;Priyank.Jadhav@pidilite.com;
+chandan.singh@pidilite.com;pallavi.chakravarty@pidilite.com;OTS880@pidilite.com',
+@profile_name = 'darpan',                  
+@subject = 'DatMergeStagging Job Report',             
+@body =@vBody,
+@body_format = 'HTML';      
+drop table #temp123
+
+--Dhagash.Desai@pidilite.com;datacenter@pidilite.com;prasanna.mahajan@heerasoftware.com;Priyank.Jadhav@pidilite.com;chandan.singh@pidilite.com;pallavi.chakravarty@pidilite.com;OTS880@pidilite.com
+GO
+
