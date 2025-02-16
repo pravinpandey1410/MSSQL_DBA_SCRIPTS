@@ -1,0 +1,14 @@
+--Rebuild
+
+SELECT 'ALTER INDEX '+b.name+' ON ' +d.name +'.' +C.name+' REBUILD WITH (FILLFACTOR= 90, ONLINE = OFF);' AS IndexScript,
+c.name AS TableName, b.name AS IndexName, ps.index_type_desc, avg_fragmentation_in_percent, ps.page_count,
+getdate() AS InsertDate
+FROM SMS_LTFS_LIVE_Report.sys.dm_db_index_physical_stats (DB_ID('SMS_LTFS_LIVE_Report'), 0, -1, NULL, NULL) AS ps
+INNER JOIN SMS_LTFS_LIVE_Report.sys.indexes AS b ON ps.OBJECT_ID = b.OBJECT_ID
+inner join SMS_LTFS_LIVE_Report.sys.objects as c ON b.object_id = c.object_id
+inner join SMS_LTFS_LIVE_Report.sys.schemas as d ON c.schema_id = d.schema_id
+AND ps.index_id = b.index_id
+WHERE avg_fragmentation_in_percent >=30
+  AND ps.index_id > 0
+ --AND page_count >= 100
+ORDER by avg_fragmentation_in_percent desc

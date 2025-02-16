@@ -1,0 +1,67 @@
+select * from 
+(SELECT datediff(SS,qs.start_time,getdate()) AS Duration_Sec --Convert(nvarchar(30),(Getdate() -qs.start_time),130) AS Duration,   --qs.start_time,
+                    ,qs.cpu_time
+                    ,qs.session_id
+                    ,qs.blocking_session_id
+                    ,qs.wait_type
+                    ,qs.wait_time
+                    ,qs.last_wait_type
+                    ,s.host_name
+                    ,(Select top 1 name from msdb.dbo.sysjobs where Right(Cast(job_id as Varchar(1000)),10)=Right(Replace(Replace(s.program_name,'SQLAgent - TSQL JobStep (Job ',''),' : Step 1)',''),10)) as JobName
+                    ,s.program_name
+                    ,s.login_name
+                    ,s.client_interface_name
+                    ,c.client_net_address,
+                    qs.granted_query_memory,
+        qs.status, qs.command, db_name(qs.database_id) DatabaseName, 
+    qs.reads, qs.writes, qs.logical_reads,
+    SUBSTRING(st.[text],CASE WHEN (qs.statement_start_offset/2)+1 < 1 THEN 1 ELSE (qs.statement_start_offset/2)+1 END,
+   ((CASE qs.statement_end_offset WHEN -1 THEN DATALENGTH(st.[text]) WHEN 0 THEN DATALENGTH(st.[text])
+        ELSE qs.statement_end_offset END - (CASE WHEN qs.statement_start_offset < 1 THEN 1 ELSE qs.statement_start_offset END))/2) + 1) AS statement_text,    
+    st.[text] Full_Statement,
+    qp.query_plan,
+     (
+        Select 
+        SUBSTRING (t1.text,(r1.statement_start_offset/2) + 1, 
+         ((CASE WHEN r1.statement_end_offset = -1 
+             THEN LEN(CONVERT(NVARCHAR(MAX), t1.text)) * 2 
+             ELSE r1.statement_end_offset 
+        END - r1.statement_start_offset)/2) + 1) AS [Individual_Blocking_Query] 
+        From 
+        sys.dm_exec_requests r1 
+        CROSS APPLY sys.dm_exec_sql_text(r1.sql_handle) t1 
+        WHERE 
+        r1.session_id = qs.blocking_session_id And
+        r1.session_id > 50 
+        AND r1.session_id != @@spid 
+    ) [Individual_Blocking_Query]
+, (
+        Select 
+        SUBSTRING(t1.text, 1, 200) AS [Parent_Blocking_Query] 
+        From 
+        sys.dm_exec_requests r1 
+        CROSS APPLY sys.dm_exec_sql_text(r1.sql_handle) t1 
+        WHERE 
+        r1.session_id = qs.blocking_session_id And
+        r1.session_id > 50 
+        AND r1.session_id != @@spid 
+    ) [Parent_Blocking_Query],
+    qs.wait_resource,qs.percent_complete,
+    qs.estimated_completion_time,
+    qs.open_resultset_count, qs.transaction_id,  
+    qs.total_elapsed_time, qs.scheduler_id,  qs.statement_start_offset,
+    qs.statement_end_offset
+    FROM sys.dm_exec_requests qs
+CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) AS st 
+CROSS apply sys.dm_exec_query_plan (qs.plan_handle) AS qp
+inner join sys.dm_exec_connections c on c.session_id=qs.session_id 
+inner join sys.dm_exec_sessions AS s ON s.session_id=qs.session_id 
+WHERE qs.session_id in (select distinct spid from master..sysprocesses 
+where upper(cmd) not in ('AWAITING COMMAND','MIRROR HANDLER','LAZY WRITER','CHECKPOINT SLEEP','RA MANAGER','LOG WRITER','CHECKPOINT')
+and (lower(status) = 'runnable' or lower(status) = 'suspended') and SPID <> @@SPID)) a
+where statement_text not like 'WAITFOR(RECEIVE TOP (1) message_type_name%' 
+and last_wait_type not like '%BROKER_RECEIVE_WAITFOR%' 
+and Duration_Sec > 0 
+order by Duration_Sec desc 
+--order by cpu_time desc
+--order by granted_query_memory desc

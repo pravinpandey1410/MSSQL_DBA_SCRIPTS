@@ -1,0 +1,11 @@
+SELECT
+USER_NAME(grantee_principal_id) AS [User],
+OBJECT_NAME(major_id) AS [Object],
+permission_name AS [Permission]
+FROM
+sys.database_permissions
+WHERE
+class_desc = 'OBJECT_OR_COLUMN' -- To filter only object permissions
+AND type_desc = 'SQL_STORED_PROCEDURE' -- To filter only stored procedures
+AND state_desc = 'GRANT'
+AND permission_name = 'EXECUTE'

@@ -1,0 +1,19 @@
+--logshipping restore script
+
+DECLARE @DBName varchar(50)
+DECLARE @TrnDateTime datetime
+SET @DBName='CommonSecDb' ---Set DB Name[CommonSecDb]
+SET @TrnDateTime='2024-05-22 05:30:00' --Enter date and time which is greater than last restored file time.
+SELECT
+CONVERT(CHAR(100), SERVERPROPERTY('Servername')) AS Server,
+ msdb.dbo.backupset.database_name,
+'RESTORE LOG '+ @DBName + ' FROM DISK = ' + '''' + REPLACE(physical_device_name,'\\172.30.86.38\Log Shipping','\\172.20.86.13\Log Shipping')  + '''' + ' WITH NORECOVERY, STATS=1',
+msdb.dbo.backupset.backup_start_date,
+msdb.dbo.backupset.backup_finish_date,
+DATEDIFF(MINUTE, msdb.dbo.backupset.backup_start_date, msdb.dbo.backupset.backup_finish_date) AS Duration,
+CAST(msdb.dbo.backupset.backup_size AS NUMERIC(35,2))/1048576.0/1024.0 AS backup_size_GB
+FROM msdb.dbo.backupmediafamily
+INNER JOIN msdb.dbo.backupset ON msdb.dbo.backupmediafamily.media_set_id = msdb.dbo.backupset.media_set_id
+WHERE msdb.dbo.backupset.type = 'L' AND msdb.dbo.backupset.database_name=@DBName AND backup_start_date > @TrnDateTime
+ORDER BY
+msdb.dbo.backupset.backup_finish_date
