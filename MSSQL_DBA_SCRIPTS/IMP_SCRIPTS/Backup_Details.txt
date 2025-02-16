@@ -1,0 +1,50 @@
+SELECT        
+  BS.database_name        
+ ,BS.backup_set_id        
+ ,(CASE        
+  WHEN BS.type = 'D' THEN 'Full Database Backup'        
+  WHEN BS.type = 'F' THEN 'File Or Filegroup'        
+  WHEN BS.type = 'G' THEN 'Differential File'        
+  WHEN BS.type = 'I' THEN 'Differential Database Backup'        
+  WHEN BS.type = 'L' THEN 'Log'        
+  WHEN BS.type = 'P' THEN 'Partial'        
+  WHEN BS.type = 'Q' THEN 'Differential Partial'        
+  ELSE 'N/A'        
+  END) AS backup_type        
+ ,CONVERT (VARCHAR (19), BS.backup_start_date, 120) AS backup_start_date        
+ ,(CASE        
+  WHEN DATEDIFF (SECOND, BS.backup_start_date, BS.backup_finish_date) >= 360000 THEN '99:59:59+'        
+  WHEN DATEDIFF (SECOND, BS.backup_start_date, BS.backup_finish_date) < 1 THEN '__:__:__'        
+  WHEN DATEDIFF (SECOND, BS.backup_start_date, BS.backup_finish_date) < 60 THEN '__:__:'+RIGHT ('00'+CONVERT (VARCHAR (2), ((DATEDIFF (SECOND, BS.backup_start_date, BS.backup_finish_date))%3600)%60),2)        
+  WHEN DATEDIFF (SECOND, BS.backup_start_date, BS.backup_finish_date) < 3600 THEN '__:'+RIGHT ('00'+CONVERT (VARCHAR (2), ((DATEDIFF (SECOND, BS.backup_start_date, BS.backup_finish_date))%3600)/60),2)+':'+RIGHT ('00'+CONVERT (VARCHAR (2), ((DATEDIFF (SECOND, BS.backup_start_date, BS.backup_finish_date))%3600)%60),2)        
+  ELSE RIGHT ('00'+CONVERT (VARCHAR (2), (DATEDIFF (SECOND, BS.backup_start_date, BS.backup_finish_date))/3600),2)+':'+RIGHT ('00'+CONVERT (VARCHAR (2), ((DATEDIFF (SECOND, BS.backup_start_date, BS.backup_finish_date))%3600)/60),2)+':'+RIGHT ('00'+CONVERT
+  
+    
+    
+      
+ (VARCHAR (2), ((DATEDIFF (SECOND, BS.backup_start_date, BS.backup_finish_date))%3600)%60),2)        
+  END) AS duration        
+ ,REVERSE (SUBSTRING (REVERSE (CONVERT (VARCHAR (15), CONVERT (MONEY, ROUND (BS.backup_size/1048576.0, 0)), 1)), 4, 15)) AS backup_size_mb        
+ ,REVERSE (SUBSTRING (REVERSE (CONVERT (VARCHAR (15), CONVERT (MONEY, DATEDIFF (DAY, BS.backup_start_date, GETDATE ())), 1)), 4, 15)) AS days_ago        
+ ,ROW_NUMBER () OVER        
+      (        
+       PARTITION BY        
+        BS.database_name        
+       ORDER BY        
+        BS.type        
+      ) AS database_filter_id        
+--INTO         dbo.#ssaj_sssr_last_backup_set_temp        
+FROM        
+ msdb.dbo.backupset BS        
+ INNER JOIN        
+        
+  (        
+   SELECT        
+    MAX (X.backup_set_id) AS backup_set_id_max        
+   FROM        
+    msdb.dbo.backupset X        
+   GROUP BY        
+     X.database_name        
+    ,X.type        
+  ) A ON A.backup_set_id_max = BS.backup_set_id        
+        

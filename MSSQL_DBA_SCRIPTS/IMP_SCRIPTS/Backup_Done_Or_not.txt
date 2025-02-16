@@ -1,0 +1,15 @@
+SELECT d.name AS "Database",
+       ISNULL(CONVERT(VARCHAR,b.backupdate,120),'NEVER') AS "Last Full Backup"
+FROM sys.databases d
+LEFT JOIN (SELECT database_name,type,MAX(backup_finish_date) backupdate FROM backupset
+           WHERE type LIKE 'D'
+           GROUP BY database_name,type) b on d.name=b.database_name
+WHERE (backupdate IS NULL OR backupdate < getdate()-1)
+SELECT d.name AS "Database",
+       ISNULL(CONVERT(VARCHAR,b.backupdate,120),'NEVER') AS "Last Log Backup"
+FROM sys.databases d
+LEFT JOIN (SELECT database_name,type,MAX(backup_finish_date) backupdate FROM backupset
+           WHERE type LIKE 'L'
+           GROUP BY database_name,type) b on d.name=b.database_name
+WHERE recovery_model = 1
+  AND (backupdate IS NULL OR backupdate < getdate()-1)
