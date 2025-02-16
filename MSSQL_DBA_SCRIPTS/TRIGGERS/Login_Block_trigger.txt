@@ -1,0 +1,85 @@
+USE [master]
+GO
+
+/****** Object:  DdlTrigger [connection_limit_trigger]    Script Date: 28-12-2023 09:53:32 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+
+
+
+
+
+
+
+
+
+CREATE TRIGGER [connection_limit_trigger]
+ON ALL SERVER WITH EXECUTE AS 'Pravin'
+FOR LOGON
+AS
+
+--sa 
+-- biadmin
+--NT AUTHORITY\NETWORK SERVICE
+
+BEGIN
+IF (
+(ORIGINAL_LOGIN ()  <> 'Pravin')
+AND (ORIGINAL_LOGIN () <> 'gs1support')
+AND (ORIGINAL_LOGIN () <> 'dotvik')
+AND (ORIGINAL_LOGIN () <> 'VFMGMT')
+AND (ORIGINAL_LOGIN () <> 'Vishal_Rajdev')
+
+AND (APP_NAME() LIKE 'Microsoft SQL Server Management Studio%'
+--OR APP_NAME()   LIKE 'SQLCMD'
+--OR APP_NAME()   LIKE '%SQL%'
+)
+)
+begin
+ declare @msg varchar(500),
+     @ipadd varchar (20)
+     set @msg = ORIGINAL_LOGIN() + ' has just try to logging in to ' +
+    LTRIM(@@ServerName) + ' on '+ LTRIM(getdate()) + ' using ' +
+    APP_NAME()
+   set @ipadd = Cast(CONNECTIONPROPERTY('client_net_address') as varchar(20))
+   ROLLBACK
+   Insert into [Triggerevent](Mes,IPadd) values (@msg,@ipadd)
+  --END
+ end
+END
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+GO
+
+DISABLE TRIGGER [connection_limit_trigger] ON ALL SERVER
+GO
