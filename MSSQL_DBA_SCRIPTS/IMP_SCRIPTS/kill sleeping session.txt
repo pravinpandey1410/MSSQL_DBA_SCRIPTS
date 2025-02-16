@@ -1,0 +1,19 @@
+DECLARE @v_spid INT
+DECLARE c_Users CURSOR
+   FAST_FORWARD FOR
+select spid from sys.sysprocesses sp
+cross apply sys.dm_exec_sql_text(sp.sql_handle) sh
+where status='sleeping' 
+--and datepart(hh,login_time)<(datepart(hh,getdate())-1)
+
+OPEN c_Users
+FETCH NEXT FROM c_Users INTO @v_spid
+WHILE (@@FETCH_STATUS=0)
+BEGIN
+
+  EXEC('KILL '+@v_spid)
+  FETCH NEXT FROM c_Users INTO @v_spid
+END
+
+CLOSE c_Users
+DEALLOCATE c_Users

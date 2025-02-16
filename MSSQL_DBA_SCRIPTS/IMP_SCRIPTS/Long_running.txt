@@ -1,0 +1,46 @@
+SELECT
+       r.session_id
+,      r.start_time
+,      dmv2.last_request_end_time
+,      TotalElapsedTime_ms = r.total_elapsed_time
+,      cast(r.total_elapsed_time/(1000*60*60) as varchar(50))+':'--as Hour
+       +cast((r.total_elapsed_time%(1000*60*60))/(1000*60)as varchar(50))+':'--as Minutes
+       +cast(((r.total_elapsed_time%(1000*60*60))%(1000*60))/1000 as varchar(50))+':'--as Seconds
+       +cast(((r.total_elapsed_time%(1000*60*60))%(1000*60))%1000 as varchar(50))as H_M_S_ms           
+,      r.[status]
+,      r.command
+,      r.blocking_session_id
+,      DatabaseName = DB_Name(r.database_id)
+,      dmv2.host_name
+,      dmv2.[login_name] AS [SessionLoginName]
+,      dmv2.[original_login_name] AS [ConnectionLoginName]
+,      dmv2.login_time
+,      r.wait_type
+,      r.last_wait_type
+,      r.wait_resource
+,      r.cpu_time
+,      dmv2.[memory_usage] AS [MemoryUsage]
+,      dmv2.[program_name] AS [ProgramName]
+,      r.reads
+,      r.writes
+,      r.logical_reads
+,    [obj] = QUOTENAME(OBJECT_SCHEMA_NAME(t.objectid, t.[dbid]))
+    + '.' + QUOTENAME(OBJECT_NAME(t.objectid, t.[dbid]))
+,      t.[text] AS [executing batch]
+,      SUBSTRING(
+                           t.[text], r.statement_start_offset / 2, 
+                           (      CASE WHEN r.statement_end_offset = -1 THEN DATALENGTH (t.[text]) 
+                                          ELSE r.statement_end_offset 
+                                  END - r.statement_start_offset ) / 2 
+                      ) AS [executing statement] 
+,      p.query_plan
+FROM
+       sys.dm_exec_requests r
+CROSS APPLY
+       sys.dm_exec_sql_text(r.sql_handle) AS t
+CROSS APPLY   
+       sys.dm_exec_query_plan(r.plan_handle) AS p
+       INNER JOIN sys.dm_exec_sessions dmv2 
+    ON r.[session_id] = dmv2.[session_id]
+ORDER BY 
+       r.total_elapsed_time DESC;

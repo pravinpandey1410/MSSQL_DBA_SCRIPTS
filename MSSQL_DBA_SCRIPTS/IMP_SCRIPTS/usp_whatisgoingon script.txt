@@ -1,0 +1,22 @@
+USE [master]
+GO
+
+/****** Object:  StoredProcedure [dbo].[usp_WhatIsGoingOn]    Script Date: 3/2/2023 6:42:07 PM ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+
+CREATE procedure [dbo].[usp_WhatIsGoingOn]  
+as  
+select SessionID,BlockingWith,RunningMinutes as RunningMinute ,Percent_Complete ,DatabaseName,transaction_isolation_level,
+statement_text,login_name,program_name,RunningFrom,CPU_Time,lastwaittype, * from   
+master.dbo.WhatIsGoingOn order  by RunningMinutes desc
+
+
+GO
+
+

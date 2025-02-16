@@ -1,0 +1,58 @@
+/*
+Missing Index Details from SQLQuery7.sql - 10.1.62.189.BIRLA_DE (BSLI\bggrp00084 (159))
+The Query Processor estimates that implementing the following index could improve the query cost by 99.9157%.
+*/
+
+/*
+USE [BIRLA_DE]
+GO
+CREATE NONCLUSTERED INDEX [<Name of Missing Index, sysname,>]
+ON [dbo].[tblTransaction] ([ClientBasicInfoId],[BOUGHT_SOLD],[TRADED QUANTITY])
+INCLUDE ([TRADE DATE],[SCRIP ISIN],[MARKET RATE],[acq_rate])
+GO
+*/
+/*
+Missing Index Details from SQLQuery7.sql - 10.1.62.189.BIRLA_DE (BSLI\bggrp00084 (159))
+The Query Processor estimates that implementing the following index could improve the query cost by 99.9158%.
+*/
+
+/*
+USE [BIRLA_DE]
+GO
+CREATE NONCLUSTERED INDEX [<Name of Missing Index, sysname,>]
+ON [dbo].[tblTransaction] ([ClientBasicInfoId],[BOUGHT_SOLD],[TRADED QUANTITY])
+INCLUDE ([TRADE DATE],[SCRIP ISIN],[MARKET RATE],[acq_rate])
+GO
+*/
+/*
+Missing Index Details from SQLQuery7.sql - 10.1.62.189.BIRLA_DE (BSLI\bggrp00084 (159))
+The Query Processor estimates that implementing the following index could improve the query cost by 99.9158%.
+*/
+
+/*
+USE [BIRLA_DE]
+GO
+CREATE NONCLUSTERED INDEX [<Name of Missing Index, sysname,>]
+ON [dbo].[tblTransaction] ([ClientBasicInfoId],[BOUGHT_SOLD],[TRADED QUANTITY])
+INCLUDE ([TRADE DATE],[SCRIP ISIN],[MARKET RATE],[acq_rate])
+GO
+*/
+
+
+/*
+Missing Index Details from SQLQuery7.sql - 10.1.62.189.BIRLA_DE (BSLI\bggrp00084 (159))
+The Query Processor estimates that implementing the following index could improve the query cost by 43.568%.
+*/
+
+/*
+USE [BIRLA_DE]
+GO
+CREATE NONCLUSTERED INDEX [<Name of Missing Index, sysname,>]
+ON [dbo].[tblHoldingTransctionWise] ([Units])
+INCLUDE ([ProductName],[TradeDate],[PurPrice],[FUND],[ClientId],[Amount],[CurrentValue],[Days],[CNAV],[SCRIP_ISIN])
+GO
+*/
+
+
+
+sp_helpindex 'tbltransaction'

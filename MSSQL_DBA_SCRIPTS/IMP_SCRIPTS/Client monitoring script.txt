@@ -1,0 +1,107 @@
+
+
+
+---------------------------------------------------------Monitoring_script--------------------------------------------------------------
+
+select name,state_desc from sys.databases where state_desc<>'online'
+select name,create_date  from sys.databases where name='tempdb'
+----------------------------------------------------------------------------------------------------------------------------------------
+whatsup
+
+always_on
+
+log_space
+
+SQL_Helts
+---------------------------------------------------------------[dbo].[SQL_Helts]-------------------------------------------------------------------------
+ds
+xp_fixeddrives
+-----------------------------------------------------------------------------------------------------------------------------------------
+dbcc sqlperf(logspace)
+
+select b.name,(a.size*8)/(1024*1024)as log from sys.sysaltfiles a,sys.sysdatabases b where a.dbid = b.dbid and
+a.filename like '%.ldf'and (a.size*8)/(1024*1024)>0.9
+
+
+-----------------------------------------------------------------------------------------------------------------------------------------
+
+
+select * from sys.sysaltfiles
+sp_helpdb
+------------------------------------------------------------------------------------------------------------------------------------------
+
+exec sp_readerrorlog ' ','1',' ' ,'backed'
+exec sp_readerrorlog ' ','1',' ' ,'BACKUP failed'
+exec sp_readerrorlog ' ','1',' ' ,'deadlock'
+exec sp_readerrorlog ' ','1',' ' ,'error'
+exec sp_readerrorlog ' ','1',' ' ,'I/O'
+
+-----------------------------------------------------------------------------------------------------------------------------------------------
+
+select DB_NAME(database_id) 'DBName',percent_complete,command,start_time,status from sys.dm_exec_requests where percent_complete<>0
+sp_readerrorlog
+dbcc inputbuffer(420)445 231
+
+SELECT Name,fileid, Filename,
+CONVERT(Decimal(15,2),ROUND(a.Size/128.000,2)) [Currently Allocated Space (MB)],
+CONVERT(Decimal(15,2),ROUND(FILEPROPERTY(a.Name,'SpaceUsed')/128.000,2)) AS [Space Used (MB)],
+CONVERT(Decimal(15,2),ROUND((a.Size-FILEPROPERTY(a.Name,'SpaceUsed'))/128.000,2)) AS [Available Space (MB)]
+FROM dbo.sysfiles a (NOLOCK)
+
+sp_repldone null,null,0,0,1
+select A.*,B.name from sys.sysaltfiles a,sys.sysdatabases b where a.dbid = b.dbid
+and a.filename like 'F:%'
+order by size desc
+select name,state_desc,log_reuse_wait,log_reuse_wait_desc,* from sys.databases where log_reuse_wait_desc<>'nothing'
+
+select login_name, COUNT(session_id) as cnt from sys.dm_exec_sessions
+--where login_name='mobilebi'
+group by login_name
+order by COUNT(session_id) desc
+
+
+select database_name,backup_start_date,type from msdb..backupset
+where backup_start_date>=dateadd(dd,-1,getdate()) and type<>'L'
+order by database_name asc
+
+--to check failed jobs--change date
+select distinct b.name,a.run_date from msdb..sysjobhistory a ,msdb..sysjobs b where
+a.job_id=b.job_id
+and run_status=0
+and a.run_date>=CAST(CONVERT(VARCHAR(10), DATEADD(dd,-0,GETDATE()), 112) AS INT)
+
+--a.run_date>=20170127
+
+--CAST(CONVERT(VARCHAR(10), DATEADD(dd,-0,GETDATE()), 112) AS INT)
+
+
+xp_cmdshell 'powershell -command "& {&''get-clusterresource''}"'
+Go
+xp_cmdshell 'powershell -command "& {&''get-clusterquorum''}"'
+Go
+select * from sys.dm_hadr_cluster
+Go
+SELECT  member_name, member_state_desc, number_of_quorum_votes  FROM   sys.dm_hadr_cluster_members;  
+Go
+
+EXEC dbo.sp_help_jobsteplog
+@job_name = N'test2' ;
+GO
+
+-----------------------------BACKUP STATUS----------------------------------------------------------------------------
+
+SELECT
+       'Server_IP' as [Server IP],
+       @@Servername as [Server Name],
+       cast(b.name as varchar(35)) as [Database Name],
+        ISNULL(Convert(char(40), MAbackup_start_date), 100), 'NEVER') as [Backup Start Date],  
+        ISNULL(Convert(char(40), MAbackup_finish_date), 100), 'NEVER') as [Backup End Date] ,
+        ISNULL(STR(ABS(DATEDIFF(day, GetDate(), MABackup_finish_date)))), 'NEVER') as [Day Since Last Backup],
+        GETDATE() as [Execution Date]
+       
+FROM master.dbo.sysdatabases B LEFT OUTER JOIN msdb.dbo.backupset A
+ON A.database_name = B.name AND A.type = 'i'  
+        where (b.name!='tempdb' and b.name!='model')
+        GROUP BY B.Name ORDER BY [Day Since Last Backup] asc
+
+--------------------------------------------------------------------------------------------------------------------
