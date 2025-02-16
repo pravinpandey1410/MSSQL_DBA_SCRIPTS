@@ -1,0 +1,90 @@
+USE [master]
+GO
+
+/****** Object:  StoredProcedure [dbo].[AGHealthstatus_Alert]    Script Date: 3/1/2021 9:56:53 AM ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE PROCEDURE [dbo].[AGHealthstatus_Alert]            
+AS            
+BEGIN              
+  SET NOCOUNT ON;            
+SET ANSI_WARNINGS OFF;            
+           
+IF OBJECT_ID('AGHealthstatus') IS NOT NULL            
+   DROP TABLE AGHealthstatus;            
+             
+ -- Here the progrom goes.            
+DECLARE @HADRName  varchar(25)        
+SET @HADRName = @@SERVERNAME        
+select n.group_name,n.replica_server_name,n.node_name,rs.role_desc,        
+db_name(drs.database_id) as 'DBName',drs.synchronization_state_desc,drs.synchronization_health_desc  into AGHealthstatus      
+from sys.dm_hadr_availability_replica_cluster_nodes n        
+join sys.dm_hadr_availability_replica_cluster_states cs        
+on n.replica_server_name = cs.replica_server_name        
+join sys.dm_hadr_availability_replica_states rs        
+on rs.replica_id = cs.replica_id        
+join sys.dm_hadr_database_replica_states drs        
+on rs.replica_id=drs.replica_id        
+where drs.synchronization_health_desc <> 'HEALTHY' 
+--where n.replica_server_name <> @HADRName        
+--on rs.replica_id=drs.replica_id            
+               
+           
+-- SELECT statements for procedure here            
+               
+DECLARE @count  int            
+SELECT @count=count(*) FROM AGHealthstatus      
+--where      
+       
+-- IF there is any long running jobs then it will be mailed.            
+IF @Count =1 or   @Count >1          
+--if @@ROWCOUNT > 0            
+           
+BEGIN              
+             
+ DECLARE @tableHTML  NVARCHAR(MAX) ;            
+ SET @tableHTML =            
+   'Dear Team, <BR><BR> AG out of sync. <br><br>' +            
+    N'<table border=1>' +            
+    N'<tr>' +            
+    N'<th>group_name</th>' +            
+    N'<th>replica_server_name</th>' +            
+    N'<th>node_name</th>' +            
+    N'<th>role_desc</th>' +            
+    N'<th>DBname</th>' +   
+	N'<th>synchronization_state_desc</th>' +   
+	N'<th>synchronization_health_desc</th>' +            
+    N'</tr>' +            
+    CAST ( (            
+SELECT td=[group_name],''            
+       ,td=[replica_server_name],''            
+       ,td=[node_name] ,''            
+       ,td=[role_desc],''            
+       ,td=[DBname] ,''            
+ ,td=[synchronization_state_desc],''        
+  ,td=[synchronization_health_desc]        
+FROM AGHealthstatus            
+           
+             
+      FOR XML PATH('tr'), TYPE            
+    ) AS NVARCHAR(MAX) ) +            
+    N'</table>' +            
+    '<br><br>Regards, <br> DBA Team.';            
+           
+ EXEC msdb.dbo.sp_send_dbmail            
+@profile_name = 'SQLDBA',    --- profile name          
+         
+      @recipients = 'Sailee.Anil_Contractor@ithmaarbank.com',          
+      @subject = 'Alert:Server AG is out of sync on IB-CRM-DB01 ',     --- change server IP          
+      @body = @tableHTML,            
+      @body_format = 'HTML';            
+           
+END          
+           
+END        
+GO
+
