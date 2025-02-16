@@ -1,0 +1,176 @@
+step 1 
+
+if exists (select 1 from [A!].dbo.DeadlockEvents where notified = 0 )
+
+begin
+
+declare @tableHTML nvarchar(max)
+
+set @tableHTML =N'<H3><FONT SIZE="3" FACE="Tahoma">Deadlock Has occured on '+@@servername+' .. Please Investigate Immediately </FONT></H3>'
+
+set @tableHTML = @tableHTML+ N'<table border="1">' +
+
+           N'<FONT SIZE="2" FACE="Calibri">' +          
+
+            N'<tr><th align="center">RecordId</th>' +
+
+            N'<th align="center">AlertTime</th>' +
+
+            N'<th align="center">DeadlockGraph</th>' +
+
+            N'</tr>' +
+
+           ISNULL(CAST ( (
+
+                            select  td = '',
+
+                                    td = RecordId,'',
+
+                                    td = AlertTime,'',
+
+                                    td = DeadlockGraph,''
+
+                     from [A!].dbo.DeadlockEvents where notified = 0
+
+    FOR XML PATH('tr'), TYPE
+
+            ) AS NVARCHAR(MAX) ),'') +
+
+            N'</FONT>' +
+
+            N'</table>' ;
+
+-- bcp out as .xdl file. This is the deadlock graph that will be emailed. Note that it will be overwritten everytime !!
+
+--exec master..xp_cmdshell 'BCP.exe "SELECT  [Deadlockgraph].query(''/TextData/deadlock-list'')
+--FROM [A!].dbo.DeadlockEvents where Notified = 0" queryout "D:\Deadlock\deadlock.xdl" -c -q -T -S "LTFMBPSQLTESTDB"';
+
+-- send email out with the graph attached
+
+declare @subject1 varchar(50)
+
+set @subject1 = 'Deadlock Has Occured on '+@@servername
+
+EXEC msdb.dbo.sp_send_dbmail
+
+            @profile_name = 'DBMail',    
+
+            @recipients='ashish.s@ltfs.com',
+
+            @subject = @subject1,
+
+            @body = @tableHTML,
+
+            @body_format = 'HTML'
+
+            --@file_attachments = 'D:\Deadlock\Deadlock.xdl';
+
+end
+
+go
+
+-- update the Deadlock table so that when the job runs it wont send out previous alert
+
+update [A!].dbo.DeadlockEvents
+
+set Notified = 1 where notified = 0
+
+step 2
+
+USE [A!]
+GO
+
+/****** Object:  Table [dbo].[DeadlockEvents]    Script Date: 22-12-2024 23:08:44 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[DeadlockEvents](
+    [RecordId] [int] IDENTITY(1,1) NOT NULL,
+    [AlertTime] [datetime] NULL,
+    [DeadlockGraph] [xml] NULL,
+    [Notified] [int] NULL
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[DeadlockEvents] ADD  DEFAULT ('0') FOR [Notified]
+GO
+
+step 3
+
+if exists (select 1 from [A!].dbo.DeadlockEvents where notified = 0 )
+
+begin
+
+declare @tableHTML nvarchar(max)
+
+set @tableHTML =N'<H3><FONT SIZE="3" FACE="Tahoma">Deadlock Has occured on '+@@servername+' .. Please Investigate Immediately </FONT></H3>'
+
+set @tableHTML = @tableHTML+ N'<table border="1">' +
+
+           N'<FONT SIZE="2" FACE="Calibri">' +          
+
+            N'<tr><th align="center">RecordId</th>' +
+
+            N'<th align="center">AlertTime</th>' +
+
+            N'<th align="center">DeadlockGraph</th>' +
+
+            N'</tr>' +
+
+           ISNULL(CAST ( (
+
+                            select  td = '',
+
+                                    td = RecordId,'',
+
+                                    td = AlertTime,'',
+
+                                    td = DeadlockGraph,''
+
+                     from [A!].dbo.DeadlockEvents where notified = 0
+
+    FOR XML PATH('tr'), TYPE
+
+            ) AS NVARCHAR(MAX) ),'') +
+
+            N'</FONT>' +
+
+            N'</table>' ;
+
+-- bcp out as .xdl file. This is the deadlock graph that will be emailed. Note that it will be overwritten everytime !!
+
+--exec master..xp_cmdshell 'BCP.exe "SELECT  [Deadlockgraph].query(''/TextData/deadlock-list'')
+--FROM [A!].dbo.DeadlockEvents where Notified = 0" queryout "D:\Deadlock\deadlock.xdl" -c -q -T -S "LTFMBPSQLTESTDB"';
+
+-- send email out with the graph attached
+
+declare @subject1 varchar(50)
+
+set @subject1 = 'Deadlock Has Occured on '+@@servername
+
+EXEC msdb.dbo.sp_send_dbmail
+
+            @profile_name = 'DBMail',    
+
+            @recipients='ashish.s@ltfs.com',
+
+            @subject = @subject1,
+
+            @body = @tableHTML,
+
+            @body_format = 'HTML'
+
+            --@file_attachments = 'D:\Deadlock\Deadlock.xdl';
+
+end
+
+go
+
+-- update the Deadlock table so that when the job runs it wont send out previous alert
+
+update [A!].dbo.DeadlockEvents
+
+set Notified = 1 where notified = 0

@@ -1,0 +1,88 @@
+DB_Query_history.
+
+1)	Create a DBA database and create table with below query and make a plan this will Occurs every day every 10 second(s).
+
+
+
+
+
+USE [DBA]
+GO
+
+/****** Object:  Table [dbo].[tran_history]    Script Date: 9/4/2024 10:42:08 AM ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[tran_history](
+	[CURRENTDATE] [datetime] NOT NULL,
+	[session_id] [smallint] NOT NULL,
+	[status] [nvarchar](30) NOT NULL,
+	[BlockedBy] [smallint] NULL,
+	[wait_type] [nvarchar](60) NULL,
+	[wait_resource] [nvarchar](256) NOT NULL,
+	[Wait_sec] [numeric](17, 6) NULL,
+	[cpu_time] [int] NOT NULL,
+	[logical_reads] [bigint] NOT NULL,
+	[reads] [bigint] NOT NULL,
+	[writes] [bigint] NOT NULL,
+	[Elaps_Sec] [numeric](17, 6) NULL,
+	[statement_text] [nvarchar](max) NULL,
+	[command_text] [nvarchar](776) NULL,
+	[command] [nvarchar](16) NOT NULL,
+	[login_name] [nvarchar](128) NOT NULL,
+	[host_name] [nvarchar](128) NULL,
+	[program_name] [nvarchar](128) NULL,
+	[last_request_end_time] [datetime] NULL,
+	[login_time] [datetime] NOT NULL,
+	[open_transaction_count] [int] NOT NULL
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+
+
+
+
+
+
+
+2)	Create a job and past below query is first step.
+insert into tran_history
+ SELECT   getdate()as RUN_TIME, s.session_id,
+                 r.status,
+                 r.blocking_session_id                                 'BlockedBy',
+                 r.wait_type,
+                 wait_resource,
+                 r.wait_time / 1000.0                             'Wait_sec',
+                 r.cpu_time,
+                 r.logical_reads,
+                 r.reads,
+                 r.writes,
+                 r.total_elapsed_time / (1000.0)                    'Elaps_Sec',
+                 Substring(st.TEXT,(r.statement_start_offset / 2) + 1,
+                           ((CASE r.statement_end_offset
+                               WHEN -1
+                               THEN Datalength(st.TEXT)
+                               ELSE r.statement_end_offset
+                             END - r.statement_start_offset) / 2) + 1) AS statement_text,
+                 Coalesce(Quotename(Db_name(st.dbid)) + N'.' + Quotename(Object_schema_name(st.objectid,st.dbid)) + N'.' + Quotename(Object_name(st.objectid,st.dbid)),
+                          '') AS command_text,
+                 r.command,
+                 s.login_name,
+                 s.host_name,
+                 s.program_name,
+                 s.last_request_end_time,
+                 s.login_time,
+                 r.open_transaction_count
+
+        FROM     sys.dm_exec_sessions AS s
+                 JOIN sys.dm_exec_requests AS r
+                   ON r.session_id = s.session_id
+                 CROSS APPLY sys.Dm_exec_sql_text(r.sql_handle) AS st
+             ORDER BY r.status,
+                 r.blocking_session_id,
+                 s.session_id
+
+
+
