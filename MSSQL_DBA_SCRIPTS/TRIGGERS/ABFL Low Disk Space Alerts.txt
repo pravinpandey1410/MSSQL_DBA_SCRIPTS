@@ -58,8 +58,8 @@ begin
 		) AS NVARCHAR(MAX) ) +
 		N'</table>' ;
 
-	EXEC [10.1.62.137,50243].msdb.dbo.sp_send_dbmail
-	@recipients='cloversqlconnect@cloverinfotech.com;baiju.jha@adityabirlacapital.com',
+	EXEC [server_IP].msdb.dbo.sp_send_dbmail
+	@recipients='gmail@gmail.com',
 	@subject = @strsubject,
 	@body = @tableHTML,
 	@body_format = 'HTML' ,
