@@ -282,7 +282,7 @@ N'<H3 bgcolor="magenta">Below database Log Size is greater than 30 GB on Server 
 
 
 
-   exec [10.1.62.137,50243].msdb.dbo.sp_send_dbmail  
+   exec [server_IP].msdb.dbo.sp_send_dbmail  
 
 
 
@@ -290,7 +290,7 @@ N'<H3 bgcolor="magenta">Below database Log Size is greater than 30 GB on Server 
 
 
 
-   @recipients='Baiju.Jha@adityabirlacapital.com;cloversqlconnect@cloverinfotech.com',
+   @recipients='gmail@gmail.com',
 
 
 
@@ -313,7 +313,7 @@ N'<H3 bgcolor="magenta">Below database Log Size is greater than 30 GB on Server 
 
 
 
-     @subject = 'Log Size is greater than 30 GB on 10.1.62.78 server',  
+     @subject = 'Log Size is greater than 30 GB on IP server',  
 
 
 
